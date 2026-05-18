@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+data/raw/
+data/
+models/*.pth
+data/processed/
+*.zip
+*.tar.gz
