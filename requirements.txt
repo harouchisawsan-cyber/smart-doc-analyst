@@ -1,4 +1,4 @@
-torch>=2.0
+torch
 torchvision
 crewai
 langchain-google-genai

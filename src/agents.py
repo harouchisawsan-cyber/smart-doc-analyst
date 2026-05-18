@@ -3,11 +3,11 @@
 
 from crewai import Agent
 
-# Agent de classification (Le spécialiste Deep Learning)
-classifier = Agent(
-  role='Document Classifier',
-  goal='Classer les documents entrants en catégories précises',
-  backstory='Expert en vision par ordinateur, tu analyses les images pour identifier le type de document.',
-  verbose=True,
-  allow_delegation=False
-)
+class DocumentAgents:
+    def visual_classifier(self):
+        return Agent(
+            role='Classificateur Visuel',
+            goal='Identifier le type de document via le modèle PyTorch',
+            backstory='Expert en vision par ordinateur spécialisé en analyse documentaire.',
+            verbose=True
+        )

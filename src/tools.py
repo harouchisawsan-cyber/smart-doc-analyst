@@ -1,0 +1,2 @@
+#Contenu : Une classe qui charge ton modèle entraîné et qui a une fonction run(image_path).
+#Rôle : Elle permet à l'agent CrewAI d'utiliser ton modèle PyTorch comme si c'était un simple outil (comme une calculatrice ou une recherche Google).
