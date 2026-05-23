@@ -6,7 +6,7 @@ import torch.nn as nn
 from torchvision import models
 
 class DocumentClassifier(nn.Module):
-    def __init__(self, num_classes=16):
+    def __init__(self, num_classes=9):
         super(DocumentClassifier, self).__init__()
         # On charge les poids pré-entraînés pour bénéficier de l'intelligence visuelle
         self.base_model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
