@@ -1,34 +1,75 @@
-#Contenu : La définition de tes agents (Rôles, Backstories, Goals).
-#Rôle : Tu y crées l'Agent Classificateur, l'Agent Extracteur, et l'Agent Superviseur.
-
-from crewai import Agent, LLM
 import os
+from crewai import Agent, LLM
+
+
+def get_ollama_llm():
+    """Retourne le LLM local via Ollama"""
+    return LLM(
+        model="ollama/llama3.2",
+        base_url="http://localhost:11434",  # URL locale d'Ollama
+        temperature=0.2
+    )
+
 
 class DocumentAgents:
     def __init__(self):
-        # Utilisation de gemini-1.0-pro (plus compatible avec l'API v1beta)
-        self.gemini_llm = LLM(
-            model="gemini/gemini-1.0-pro",
-            api_key=os.getenv("GOOGLE_API_KEY"),
-            temperature=0.2
-        )
+        self.llm = get_ollama_llm()
 
     def visual_classifier_agent(self):
+        """Agent 1 — Spécialiste classification visuelle (utilise le CNN PyTorch)"""
         return Agent(
             role='Classificateur Visuel',
-            goal='Identifier la catégorie d\'un document à partir de son image',
-            backstory='Expert en analyse d\'images de documents, tu utilises des modèles de Deep Learning pour classer les documents.',
-            llm=self.gemini_llm,
+            goal=(
+                "Identifier avec précision la catégorie d'un document "
+                "en utilisant le modèle de Deep Learning fourni."
+            ),
+            backstory=(
+                "Tu es un expert en vision par ordinateur. "
+                "Tu utilises un CNN ResNet18 entraîné sur des milliers de documents "
+                "pour reconnaître instantanément les factures, emails, lettres, etc. "
+                "Tu fournis toujours la catégorie détectée et le chemin de l'image analysée."
+            ),
+            llm=self.llm,
             verbose=True,
             allow_delegation=False
         )
 
     def extractor_agent(self):
+        """Agent 2 — Spécialiste extraction d'informations NLP"""
         return Agent(
-            role='Extracteur d\'Information NLP',
-            goal='Lire le texte des documents et extraire les données clés en format JSON',
-            backstory='Expert en compréhension de langage naturel, tu sais extraire des montants, des dates et des entités avec précision.',
-            llm=self.gemini_llm,
+            role="Extracteur d'Information NLP",
+            goal=(
+                "Extraire les données clés du document classifié "
+                "et les retourner sous forme de JSON structuré."
+            ),
+            backstory=(
+                "Tu es un expert en traitement du langage naturel. "
+                "En fonction du type de document (facture, email, lettre...), "
+                "tu sais exactement quelles informations extraire : "
+                "montants, dates, noms, numéros de référence, etc. "
+                "Tu produis toujours un JSON propre et bien structuré."
+            ),
+            llm=self.llm,
             verbose=True,
             allow_delegation=False
+        )
+
+    def supervisor_agent(self):
+        """Agent 3 — Orchestrateur / Quality Supervisor (Human-in-the-Loop)"""
+        return Agent(
+            role='Superviseur Qualité',
+            goal=(
+                "Consolider les résultats des deux agents spécialistes, "
+                "vérifier leur cohérence, et décider si une validation humaine est nécessaire."
+            ),
+            backstory=(
+                "Tu es le chef d'orchestre du système. "
+                "Tu reçois la classification et l'extraction, tu vérifies que tout est cohérent. "
+                "Si le score de confiance est faible (< 80%) ou si les données extraites "
+                "semblent incomplètes, tu déclenches un point de contrôle humain. "
+                "Sinon, tu produis le rapport final consolidé au format JSON."
+            ),
+            llm=self.llm,
+            verbose=True,
+            allow_delegation=True
         )
