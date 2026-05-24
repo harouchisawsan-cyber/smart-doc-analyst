@@ -39,17 +39,14 @@ def log_action(agent_name: str, action: str, result: str, status: str = "success
         "status": status
     }
 
-    # Lire les logs existants
     try:
         with open(LOG_FILE, "r") as f:
             logs = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         logs = []
 
-    # Ajouter la nouvelle entrée
     logs.append(log_entry)
 
-    # Réécrire le fichier
     with open(LOG_FILE, "w") as f:
         json.dump(logs, f, indent=2, ensure_ascii=False)
 
@@ -83,7 +80,6 @@ def get_logs(last_n: int = None):
         return []
 
 
-# --- PRÉPARATION DU DATASET ---
 
 def prepare_dataset(source_path: str, output_path: str, size: tuple = (224, 224)):
     """
