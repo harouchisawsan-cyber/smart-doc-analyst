@@ -1,13 +1,21 @@
 import os
 import re
+import json
+from datetime import datetime
 from crewai import Crew, Process
 from src.agents import DocumentAgents
 from src.tasks import DocumentTasks
-from src.tools import DocClassificationTool, DocOCRTool
+from src.tools import DocClassificationTool, DocOCRTool, FileWriterTool
+from src.utils import log_action, pdf_to_image
 from dotenv import load_dotenv
+
 load_dotenv()
 
 def run_analysis(image_path: str):
+    if image_path.lower().endswith('.pdf'):
+        print("📄 PDF détecté → conversion en image...")
+        image_path = pdf_to_image(image_path)
+
     agents_factory = DocumentAgents()
     tasks_factory = DocumentTasks()
     classifier_tool = DocClassificationTool()
@@ -45,16 +53,16 @@ def run_analysis(image_path: str):
         else:
             print(f"✅ Catégorie confirmée : {category}")
 
-        from src.utils import log_action
         log_action("Humain", "HITL_validation", f"catégorie={category}, confiance={confidence}", "human_validated")
 
     # --- Suite : Extraction + Supervision ---
     extractor_agent = agents_factory.extractor_agent()
     extractor_agent.tools = [ocr_tool]
     supervisor_agent = agents_factory.supervisor_agent()
+    supervisor_agent.tools = [FileWriterTool()]
 
     task2 = tasks_factory.extraction_task(extractor_agent, ocr_text, category)
-    task3 = tasks_factory.supervision_task(supervisor_agent)
+    task3 = tasks_factory.supervision_task(supervisor_agent, confidence=confidence)
 
     crew = Crew(
         agents=[extractor_agent, supervisor_agent],
@@ -63,30 +71,62 @@ def run_analysis(image_path: str):
         verbose=True
     )
 
-    result = crew.kickoff() 
+    result = crew.kickoff()
+
+    # --- Sauvegarder le rapport final en .md ---
+    statut = "APPROUVÉ_AUTOMATIQUEMENT" if confidence >= 0.80 else "VALIDATION_HUMAINE_REQUISE"
+
+    result_str = str(result)
+    match_resume = re.search(r'resume_global[^:]*:[^"]*"([^"]{20,})"', result_str)
+    resume_txt = match_resume.group(1) if match_resume else "Non disponible"
+
+    contenu_md = f"""# 📋 Rapport Final — Smart Document Analyst
+Date : {datetime.now().strftime("%Y-%m-%d %H:%M")}
+
+---
+
+## Statut
+**{statut}**
+
+---
+
+## Classification
+| Champ | Valeur |
+|-------|--------|
+| Fichier | {image_path} |
+| Catégorie | {category} |
+| Confiance | {confidence:.2%} |
+
+---
+
+## Résumé Global
+{resume_txt}
+
+---
+
+## Données Extraites
+{result_str[:1000]}
+"""
+
+    with open("rapportfinal.md", "w", encoding="utf-8") as f:
+        f.write(contenu_md)
+    print("\n✅ Rapport sauvegardé : rapportfinal.md")
 
     # --- Afficher le résumé ---
     print("\n" + "="*60)
     print("  📋 RÉSUMÉ DU DOCUMENT")
     print("="*60)
-    try:
-        result_str = str(result)
-        if "resume_global" in result_str:
-            match = re.search(r'"resume_global"\s*:\s*"([^"]+)"', result_str)
-            if match:
-                print(f"\n{match.group(1)}")
-            else:
-                print("\nRésumé disponible dans le JSON ci-dessus.")
-        else:
-            print("\nAucun résumé généré.")
-    except:
-        print("\nRésumé non extractible.")
+    print(f"\n📄 Fichier    : {image_path}")
+    print(f"🏷️  Catégorie  : {category}")
+    print(f"📊 Confiance  : {confidence:.2%}")
+    print(f"✅ Statut     : {statut}")
+    print(f"\n💬 Résumé :\n{resume_txt}")
 
-    return result  # ← return à la fin
+    return result
 
 
 if __name__ == "__main__":
-    image_a_tester = "data/raw/news_article/0000020424.tif"
+    image_a_tester = "data/raw/invoice/505985692.tif"
     if os.path.exists(image_a_tester):
         print(f"\n{'='*60}")
         print(f"  Analyse : {image_a_tester}")
