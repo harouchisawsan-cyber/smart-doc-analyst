@@ -1,5 +1,4 @@
 #Contenu : La classe PyTorch (le CNN) et l'architecture de  modèle de classification.
-#Rôle : C'est le plan de construction de ton IA de classification.
 
 import torch
 import torch.nn as nn
