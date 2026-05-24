@@ -30,7 +30,6 @@ def train_one_epoch(model, loader, criterion, optimizer, device):
 
 
 def evaluate(model, loader, criterion, device):
-    """Évalue le modèle sur le val set — NOUVEAU"""
     model.eval()
     running_loss = 0.0
     correct = 0
@@ -54,7 +53,6 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Utilisation de : {device}")
 
-    # --- FIX : on crée le dossier models/ s'il n'existe pas ---
     os.makedirs("models", exist_ok=True)
 
     # Data Augmentation (train uniquement)
@@ -74,7 +72,6 @@ def main():
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    # Charger le dataset complet avec train_transform d'abord
     full_dataset = datasets.ImageFolder('data/processed', transform=train_transform)
 
     # Split train/val (80/20)
@@ -85,7 +82,6 @@ def main():
         generator=torch.Generator().manual_seed(42)  # reproductible
     )
 
-    # Appliquer val_transform sur le val set
     from torch.utils.data import Subset
     val_ds = Subset(
       datasets.ImageFolder('data/processed', transform=val_transform),
@@ -97,13 +93,11 @@ def main():
 
     num_classes = len(full_dataset.classes)
 
-   # D'abord limiter les données
     from torch.utils.data import Subset
-    train_ds = Subset(train_ds, range(100))   # au lieu de range(10000)
-    val_ds = Subset(val_ds, range(20))         # 20% de 100
-    NUM_EPOCHS = 10                            # au lieu de 3
+    train_ds = Subset(train_ds, range(100))   
+    val_ds = Subset(val_ds, range(20))         
+    NUM_EPOCHS = 10                           
 
-# Ensuite créer les loaders
     train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_ds, batch_size=32, shuffle=False, num_workers=0)
 
@@ -111,7 +105,6 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Scheduler : réduit le LR si la val_loss stagne
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2)
     best_val_acc = 0.0
 
@@ -129,7 +122,6 @@ def main():
             f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%"
         )
 
-        # --- FIX : on sauvegarde uniquement le meilleur modèle ---
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             torch.save(model.state_dict(), "models/document_classifier.pth")
