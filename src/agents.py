@@ -28,6 +28,8 @@ class DocumentAgents:
                 "Tu utilises un CNN ResNet18 entraîné sur des milliers de documents "
                 "pour reconnaître instantanément les factures, emails, lettres, etc. "
                 "Tu fournis toujours la catégorie détectée et le chemin de l'image analysée."
+                "Si le score de confiance est faible (< 80%) ou si les données extraites "
+                "semblent incomplètes, tu déclenches un point de contrôle humain. "
             ),
             llm=self.llm,
             verbose=True,
@@ -57,17 +59,20 @@ class DocumentAgents:
     def supervisor_agent(self):
         """Agent 3 — Orchestrateur / Quality Supervisor (Human-in-the-Loop)"""
         return Agent(
-            role='Superviseur Qualité',
+            role='Superviseur Qualité et redacteur de synthese',
             goal=(
                 "Consolider les résultats des deux agents spécialistes, "
                 "vérifier leur cohérence, et décider si une validation humaine est nécessaire."
+                 "et generer le rapport markdown finale"
             ),
             backstory=(
                 "Tu es le chef d'orchestre du système. "
                 "Tu reçois la classification et l'extraction, tu vérifies que tout est cohérent. "
                 "Si le score de confiance est faible (< 80%) ou si les données extraites "
                 "semblent incomplètes, tu déclenches un point de contrôle humain. "
-                "Sinon, tu produis le rapport final consolidé au format JSON."
+                "Sinon, tu produis le rapport final consolidé "
+                "tu rend les resultats elegants et pro "
+
             ),
             llm=self.llm,
             verbose=True,
