@@ -7,7 +7,7 @@ from src.model import DocumentClassifier
 
 
 # --- Chargement du modèle UNE SEULE FOIS au démarrage ---
-# FIX : avant, le modèle était rechargé à chaque appel → très lent
+#  avant, le modèle était rechargé à chaque appel → très lent
 _CLASSES = ['budget', 'email', 'form', 'handwritten', 'invoice', 'letter', 'memo', 'news_article', 'resume']
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _MODEL = None
