@@ -15,9 +15,24 @@ class DocumentTasks:
                 "Une phrase indiquant la catégorie du document. "
                 "Exemple : 'Le document data/raw/test/invoice/xxx.tif "
                 "a été classifié comme : invoice'"
+                "confiance et categorie "
             ),
             agent=agent
         )
+    
+    def validation_task(self, agent, context):
+        return Task(
+            description=(
+                "ARRÊT OBLIGATOIRE. Analyse les résultats de l'expert vision ci-dessus. "
+                "Tu dois présenter la catégorie et la confiance à l'humain. "
+                "NE DONNE PAS de réponse finale tant que l'humain n'a pas validé ou corrigé."
+            ),
+            expected_output="La catégorie confirmée et validée par l'opérateur humain et la confiance.",
+            agent=agent,
+            context=[context],
+            human_in_the_loop=True
+        )
+
 
     def extraction_task(self, agent, ocr_text: str, category: str = "inconnu") -> Task:
         return Task(
@@ -39,30 +54,25 @@ class DocumentTasks:
             agent=agent
         )
 
-    def supervision_task(self, agent) -> Task:
-        """Tâche 3 — Supervision, vérification cohérence + Human-in-the-Loop"""
+    def supervision_task(self, agent, confidence: float = 0.0) -> Task:
         return Task(
-            description=(
-                "Tu reçois les résultats des deux agents précédents : "
-                "la classification et l'extraction JSON.\n\n"
-                "Effectue les vérifications suivantes :\n"
-                "1. La catégorie détectée est-elle cohérente avec les données extraites ?\n"
-                "2. Les champs obligatoires sont-ils tous présents ?\n"
-                "3. Le score de confiance est-il >= 0.80 ?\n\n"
-                "RÈGLE HUMAN-IN-THE-LOOP :\n"
-                "- Si confiance < 0.80 OU si des champs critiques sont manquants : "
-                "indique 'VALIDATION_HUMAINE_REQUISE' et liste les problèmes détectés.\n"
-                "- Sinon : indique 'APPROUVÉ_AUTOMATIQUEMENT' et produis le rapport final.\n\n"
-                "RÈGLE IMPORTANTE : si la confiance est inférieure à 0.80, "
-                "tu DOIS obligatoirement mettre statut = 'VALIDATION_HUMAINE_REQUISE'.\n\n"
-                "Produis un rapport JSON final consolidé."
-            ),
-            expected_output=(
-                "Un rapport JSON final avec les champs : "
-                "statut (APPROUVÉ_AUTOMATIQUEMENT ou VALIDATION_HUMAINE_REQUISE), "
-                "classification, extraction, problemes_detectes (liste vide si aucun), "
-                "rapport_final."
-            ),
-            agent=agent,
-           
-        )
+           description=(
+            f"Score de confiance de la classification : {confidence}\n\n"
+            "Tu reçois les résultats des deux agents précédents.\n"
+            "Effectue les vérifications suivantes :\n"
+            "1. La catégorie détectée est-elle cohérente avec les données extraites ?\n"
+            "2. Les champs obligatoires sont-ils tous présents ?\n"
+            "3. Le score de confiance est-il >= 0.80 ?\n\n"
+            "RÈGLE HUMAN-IN-THE-LOOP :\n"
+            "- Si confiance < 0.80 : statut = 'VALIDATION_HUMAINE_REQUISE'\n"
+            "- Sinon : statut = 'APPROUVÉ_AUTOMATIQUEMENT'\n\n"
+            "Utilise file_writer_tool pour sauvegarder le rapport dans 'rapportfinal.md'.\n"
+            "Le contenu du fichier doit être un rapport markdown avec :\n"
+            "- Le statut\n"
+            "- La catégorie et la confiance\n"
+            "- Le resume_global\n"
+            "- Les données extraites\n"
+        ),
+        expected_output="Confirmation que rapportfinal.md a été créé avec le statut et le résumé.",
+        agent=agent
+    )
