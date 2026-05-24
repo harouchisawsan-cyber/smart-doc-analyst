@@ -7,7 +7,7 @@ from src.model import DocumentClassifier
 
 
 # --- Chargement du modèle UNE SEULE FOIS au démarrage ---
-#  avant, le modèle était rechargé à chaque appel → très lent
+# FIX : avant, le modèle était rechargé à chaque appel → très lent
 _CLASSES = ['budget', 'email', 'form', 'handwritten', 'invoice', 'letter', 'memo', 'news_article', 'resume']
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _MODEL = None
@@ -102,3 +102,15 @@ class DocOCRTool(BaseTool):
             return f"ERREUR : fichier introuvable → {image_path}"
         except Exception as e:
             return f"ERREUR OCR : {str(e)}"        
+
+class FileWriterTool(BaseTool):
+    name: str = "file_writer_tool"
+    description: str = "Sauvegarde le rapport final sur le disque."
+   
+    def _run(self, filename: str, content: str) -> str:
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(content)
+            return f"✅ Succès : Rapport écrit dans {filename}"
+        except Exception as e:
+            return f"❌ Erreur : {str(e)}"        
