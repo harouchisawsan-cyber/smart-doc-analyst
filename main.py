@@ -63,7 +63,7 @@ def run_analysis(image_path: str):
         verbose=True
     )
 
-    result = crew.kickoff()  # ← result d'abord
+    result = crew.kickoff() 
 
     # --- Afficher le résumé ---
     print("\n" + "="*60)
