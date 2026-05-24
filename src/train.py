@@ -66,7 +66,7 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=16, shuffle=True) # Batch plus petit pour 900 images
     val_loader = DataLoader(val_ds, batch_size=16, shuffle=False)
 
-    # --- CORRECTION : num_classes=9 ---
+
     model = DocumentClassifier(num_classes=9).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.0001) # Learning rate plus faible pour le fine-tuning
