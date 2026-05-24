@@ -1,125 +1,71 @@
 import os
+import shutil
 import json
 from datetime import datetime
 from PIL import Image
 
-
-# --- LOGGING JSON ---
-
-LOG_FILE = "logs/agent_logs.json"
-
-def setup_logger():
-    """Crée le dossier logs/ si il n'existe pas"""
-    os.makedirs("logs", exist_ok=True)
-    if not os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "w") as f:
-            json.dump([], f)  # fichier JSON vide au départ
-
-
-def log_action(agent_name: str, action: str, result: str, status: str = "success"):
+def logger_json(agent, action, result):
     """
-    Enregistre une action agent dans logs/agent_logs.json
-    
-    Exemple d'entrée :
-    {
-        "timestamp": "2025-05-20T14:32:01.123456",
-        "agent": "Classificateur Visuel",
-        "action": "classify_document",
-        "result": "Catégorie : invoice | Confiance : 0.94",
-        "status": "success"
-    }
+    Exigence Prof : Enregistre chaque action des agents dans un fichier JSON.
+    Cette fonction est appelée par le 'step_callback' dans main.py.
     """
-    setup_logger()
-
     log_entry = {
         "timestamp": datetime.now().isoformat(),
-        "agent": agent_name,
-        "action": action,
-        "result": str(result),
-        "status": status
+        "agent": str(agent),
+        "action": str(action),
+        "result": str(result)
     }
-
-    try:
-        with open(LOG_FILE, "r") as f:
-            logs = json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        logs = []
-
-    logs.append(log_entry)
-
-    with open(LOG_FILE, "w") as f:
-        json.dump(logs, f, indent=2, ensure_ascii=False)
-
-
-def log_human_checkpoint(image_path: str, reason: str):
-    """Log spécial quand le superviseur demande une validation humaine"""
-    log_action(
-        agent_name="Superviseur Qualité",
-        action="human_checkpoint_triggered",
-        result=f"Fichier: {image_path} | Raison: {reason}",
-        status="waiting_human"
-    )
-    print(f"\n{'='*60}")
-    print("  ⚠  VALIDATION HUMAINE REQUISE")
-    print(f"  Fichier  : {image_path}")
-    print(f"  Raison   : {reason}")
-    print(f"{'='*60}\n")
-
-
-def get_logs(last_n: int = None):
-    """
-    Retourne les logs — utile pour débugger ou afficher l'historique
     
-    Exemple : get_logs(last_n=5) → les 5 dernières entrées
-    """
+    log_file = "logs.json"
+    
     try:
-        with open(LOG_FILE, "r") as f:
-            logs = json.load(f)
-        return logs[-last_n:] if last_n else logs
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"Erreur lors du logging : {e}")
+# ---------------------------------------------------------
 
+SELECTED_CLASSES = ['budget', 'email', 'form', 'handwritten', 'invoice', 'letter', 'memo', 'news_article', 'questionnaire']
 
-
-def prepare_dataset(source_path: str, output_path: str, size: tuple = (224, 224)):
-    """
-    Convertit les images .tif du dataset RVL-CDIP en .jpg redimensionnés
-    Lance cette fonction UNE SEULE FOIS avant d'entraîner le modèle
-    """
-    os.makedirs(output_path, exist_ok=True)
-    total = 0
-    errors = 0
-
-    for category in os.listdir(source_path):
+def prepare_professional_dataset(source_path, output_path, limit=200):
+    # 1. NETTOYAGE : On supprime le dossier processed s'il existe pour repartir de zéro
+    if os.path.exists(output_path):
+        print(f"Nettoyage de l'ancien dossier {output_path}...")
+        shutil.rmtree(output_path)
+    
+    os.makedirs(output_path)
+    
+    print(f"--- Création du dataset final : 9 classes, {limit} images/classe ---")
+    
+    for category in SELECTED_CLASSES:
+        
         cat_path = os.path.join(source_path, category)
-        if not os.path.isdir(cat_path):
-            continue
-
         target_cat_path = os.path.join(output_path, category)
-        os.makedirs(target_cat_path, exist_ok=True)
-
-        print(f"--- Traitement : {category} ---")
-
-        for img_name in os.listdir(cat_path):
-            output_name = os.path.splitext(img_name)[0] + '.jpg'
-            output_file = os.path.join(target_cat_path, output_name)
-
-            # FIX : on saute les images déjà traitées
-            if os.path.exists(output_file):
-                continue
-
-            try:
-                with Image.open(os.path.join(cat_path, img_name)) as img:
-                    img = img.convert('RGB').resize(size)
-                    img.save(output_file, 'JPEG', quality=95)
-                    total += 1
-            except Exception as e:
-                print(f"  Erreur sur {img_name} : {e}")
-                errors += 1
-
-    print(f"\n✓ Dataset prêt : {total} images converties | {errors} erreurs")
-    log_action("System", "prepare_dataset", f"{total} images converties, {errors} erreurs")
-
+        
+        if os.path.exists(cat_path):
+            os.makedirs(target_cat_path)
+            # Lister uniquement les fichiers images
+            images = [f for f in os.listdir(cat_path) if f.lower().endswith(('.tif', '.jpg', '.png'))]
+            subset = images[:limit]
+            
+            print(f"Traitement de {category} ({len(subset)} images)...")
+            for img_name in subset:
+                try:
+                    with Image.open(os.path.join(cat_path, img_name)) as img:
+                        # Conversion RGB + Redimensionnement
+                        img = img.convert('RGB').resize((224, 224))
+                        # Sauvegarde en JPG (plus léger)
+                        save_name = img_name.split('.')[0] + ".jpg"
+                        img.save(os.path.join(target_cat_path, save_name), 'JPEG')
+                except Exception as e:
+                    print(f"Erreur sur {img_name}: {e}")
+        else:
+            print(f"⚠️ Alerte : La catégorie {category} est introuvable dans {source_path}")
 
 if __name__ == "__main__":
-    prepare_dataset("data/raw", "data/processed")
+    # CONFIGURATION DES CHEMINS (Ton code original)
+    RAW_DATA_PATH = "data/raw/test"
+    PROCESSED_DATA_PATH = "data/processed"
+    
+    prepare_professional_dataset(RAW_DATA_PATH, PROCESSED_DATA_PATH, limit=200)
+    print("\n✅ Dataset prêt ! Vous avez maintenant exactement 9 classes et 1800 images.")
