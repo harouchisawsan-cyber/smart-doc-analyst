@@ -6,7 +6,7 @@ from PIL import Image
 
 def logger_json(agent, action, result):
     """
-    Exigence Prof : Enregistre chaque action des agents dans un fichier JSON.
+
     Cette fonction est appelée par le 'step_callback' dans main.py.
     """
     log_entry = {
